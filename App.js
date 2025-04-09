@@ -1,13 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList,Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextInputMask } from 'react-native-masked-text';
+import {Ionicons} from "react-native-vector-icons"
 
 export default function App() {
   const [nomeProduto, setNomeProduto] = useState("")
   const [precoProduto, setPrecoProduto] = useState("")
   const [listaProdutos, setListaProdutos] = useState([])
+  const [produtoEditado,setProdutoEditado]=useState(null)
 
   //O useEffect é utilizado para buscar os dados quando montado
   useEffect(() => {
@@ -15,6 +17,9 @@ export default function App() {
   }, [])
 
   async function Salvar() {
+    //Ocultando teclado
+    Keyboard.dismiss()
+
     let produtos = []
 
     //Condição para verificar se há alguma coisa no banco, havendo, ele carrega no
@@ -22,12 +27,22 @@ export default function App() {
     if (await AsyncStorage.getItem("PRODUTOS") != null) {
       produtos = JSON.parse(await AsyncStorage.getItem("PRODUTOS"))
     }
+    //Verifica se o produto está sendo editado ou se é um cadastro novo
+    if(produtoEditado){
+      produtos[produtoEditado.index] = {nome:nomeProduto,preco:precoProduto}
+    }else{
+      produtos.push({ nome: nomeProduto, preco: precoProduto })
+    }
 
-    produtos.push({ nome: nomeProduto, preco: precoProduto })
+    
 
     await AsyncStorage.setItem("PRODUTOS", JSON.stringify(produtos))
 
-    alert("Produto Cadastrado")
+    alert(produtoEditado?"PRODUTO ATUALIZADO":"PRODUTO CADASTRADO")
+
+    //Limpando formulário
+    setNomeProduto('')
+    setPrecoProduto()
 
     BuscarDados()
   }
@@ -45,6 +60,12 @@ export default function App() {
 
     setListaProdutos(dados)
     await AsyncStorage.setItem("PRODUTOS", JSON.stringify(dados))
+  }
+  function EditarProduto(index){
+    const produto = listaProdutos[index]
+    setNomeProduto(produto.nome)
+    setPrecoProduto(produto.preco)
+    setProdutoEditado({index})
   }
 
 
@@ -66,7 +87,7 @@ export default function App() {
         onChangeText={(value) => setPrecoProduto(value)}
       />
       <TouchableOpacity style={styles.btn} onPress={Salvar}>
-        <Text style={{ color: "white" }}>CADASTRAR</Text>
+        <Text style={{ color: "white" }}>{produtoEditado?"ATUALIZAR":"CADASTRAR"}</Text>
       </TouchableOpacity>
 
 
@@ -76,17 +97,17 @@ export default function App() {
           return (
             <View style={styles.listarFlat}>
               <View>
-                <Text>NOME: {item.nome} - PRECO:{item.preco}</Text>
-                <View style={{flexDirection:'row'}}>
+                <Text>NOME: {item.nome} - PRECO:{item.preco}</Text>                
+              </View>
+              <View style={{flexDirection:'row'}}>
                   <TouchableOpacity style={styles.btnExcluir} onPress={() => DeletarProduto(index)}>
                     <Text>Excluir</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.btnExcluir} onPress={() => DeletarProduto(index)}>
-                    <Text>Excluir</Text>
+
+                  <TouchableOpacity style={styles.btnEditar} onPress={() => EditarProduto(index)}>
+                    <Text>Editar</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-
             </View>
           )
         }}
@@ -125,7 +146,7 @@ const styles = StyleSheet.create({
   listarFlat: {
     borderWidth: 1,
     width: 300,
-    height: 50,
+    height: 70,
     borderRadius: 15,
     marginVertical: 3,
     alignItems: "center",
@@ -135,10 +156,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'red',
     flexDirection: 'column',
     justifyContent: "space-around",
-    width: 50,
+    width: 70,
     height: 25,
     borderRadius: 15,
     alignSelf: "flex-end",
     alignItems: 'center'
+  },
+  btnEditar: {
+    backgroundColor: 'orange',
+    flexDirection: 'column',
+    justifyContent: "space-around",
+    width: 70,
+    height: 25,
+    borderRadius: 15,
+    alignSelf: "flex-end",
+    alignItems: 'center',
+    marginLeft:10,
+    marginTop:10
   }
 });
